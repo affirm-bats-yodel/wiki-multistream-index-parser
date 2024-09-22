@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	wikimultistreamindexparser "github.com/affirm-bats-yodel/wiki-multistream-index-parser"
+	"github.com/dsnet/compress/bzip2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,6 +67,7 @@ func TestParser_Parse(t *testing.T) {
 			t.Logf("stream: %+v", s.Index)
 		}
 	})
+	t.Run("ParseWithBzip2Stream", func(t *testing.T) {})
 }
 
 // TestIndex_String assert Index stringer return
