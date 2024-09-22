@@ -26,7 +26,9 @@ var ErrEmptyReader = errors.New("error: empty r (io.Reader)")
 // - if the reader (r) is bzip2 format, use WithBz2(true)
 // to set the reader stream is bzip2.
 func NewParser(r io.Reader, opts ...func(*Parser)) (*Parser, error) {
-	p := &Parser{}
+	p := &Parser{
+		OffsetMap: make(map[uint64]bool),
+	}
 	if r == nil {
 		return nil, ErrEmptyReader
 	}
@@ -48,6 +50,19 @@ type Parser struct {
 	// OptIsBz2 specify Reader is came from
 	// bz2 format
 	OptIsBz2 bool
+	// OffsetMap Map of the Offsets
+	//
+	// useful for determine offsets between
+	// contents
+	OffsetMap map[uint64]bool
+}
+
+// GetOffsets Get Offset List
+func (p *Parser) GetOffsets() (o []uint64) {
+	for k := range p.OffsetMap {
+		o = append(o, k)
+	}
+	return
 }
 
 // Parse index line by line
@@ -100,6 +115,9 @@ func (p *Parser) Parse(ctx context.Context) <-chan *ErrIndex {
 					PageID: pageID,
 					Title:  v[2],
 				},
+			}
+			if _, ok := p.OffsetMap[offset]; !ok {
+				p.OffsetMap[offset] = true
 			}
 		}
 		if err := scanner.Err(); err != nil {
