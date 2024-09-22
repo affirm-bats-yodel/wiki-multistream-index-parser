@@ -3,7 +3,9 @@ package wikimultistreamindexparser
 import (
 	"compress/bzip2"
 	"errors"
+	"fmt"
 	"io"
+	"strconv"
 )
 
 var ErrEmptyReader = errors.New("error: empty r (io.Reader)")
@@ -56,3 +58,15 @@ type Index struct {
 	// Title Article Title
 	Title string
 }
+
+// String implements fmt.Stringer.
+func (i *Index) String() string {
+	return strconv.FormatUint(i.Offset, 10) +
+		":" +
+		strconv.FormatUint(i.PageID, 10) +
+		":" +
+		i.Title +
+		"\n"
+}
+
+var _ fmt.Stringer = (*Index)(nil)
