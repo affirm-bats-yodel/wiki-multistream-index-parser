@@ -1,18 +1,30 @@
 package wikimultistreamindexparser
 
 import (
+	"bufio"
 	"compress/bzip2"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 )
 
 var ErrEmptyReader = errors.New("error: empty r (io.Reader)")
 
 // NewParser Create new Parser
 //
-// - r: file reader
+// # Parameters
+//
+// - r: underlying stream (can be a file, reader, etc...)
+//
+// - opts: options
+//
+// # Options
+//
+// - if the reader (r) is bzip2 format, use WithBz2(true)
+// to set the reader stream is bzip2.
 func NewParser(r io.Reader, opts ...func(*Parser)) (*Parser, error) {
 	p := &Parser{}
 	if r == nil {
@@ -37,6 +49,87 @@ type Parser struct {
 	// bz2 format
 	OptIsBz2 bool
 }
+
+// Parse index line by line
+//
+// it reads a file line by line, split by ":" and
+// sends index information over the channel
+//
+// if error occurred, error will be propagated to
+// ErrIndex's err field
+//
+// # Parameters
+//
+// - ctx: external context for handling termination
+func (p *Parser) Parse(ctx context.Context) <-chan *ErrIndex {
+	ic := make(chan *ErrIndex)
+	go func() {
+		defer close(ic)
+		scanner := bufio.NewScanner(p.Reader)
+		for scanner.Scan() {
+			if err := ctx.Err(); err != nil {
+				ic <- &ErrIndex{
+					err: err,
+				}
+				return
+			}
+			v := strings.SplitN(scanner.Text(), ":", 3)
+			if len(v) != 3 {
+				ic <- &ErrIndex{
+					err: fmt.Errorf("error: malformed index: %q", scanner.Text()),
+				}
+				return
+			}
+			offset, err := strconv.ParseUint(v[0], 10, 64)
+			if err != nil {
+				ic <- &ErrIndex{
+					err: fmt.Errorf("error: parse offset %q: %v", v[0], err),
+				}
+				return
+			}
+			pageID, err := strconv.ParseUint(v[1], 10, 64)
+			if err != nil {
+				ic <- &ErrIndex{
+					err: fmt.Errorf("error: parse pageID %q: %v", v[1], err),
+				}
+				return
+			}
+			ic <- &ErrIndex{
+				Index: Index{
+					Offset: offset,
+					PageID: pageID,
+					Title:  v[2],
+				},
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			ic <- &ErrIndex{
+				err: err,
+			}
+		}
+	}()
+	return ic
+}
+
+type ErrIndex struct {
+	Index
+	err error
+}
+
+// IsErrored check is Errored
+func (e *ErrIndex) IsErrored() bool {
+	return e.err != nil
+}
+
+// Error implements error.
+func (e *ErrIndex) Error() string {
+	if e.err != nil {
+		return e.err.Error()
+	}
+	return ""
+}
+
+var _ error = (*ErrIndex)(nil)
 
 // Index Wikipedia Index dump information
 //
