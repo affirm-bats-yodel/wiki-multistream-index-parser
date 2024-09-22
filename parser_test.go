@@ -1,6 +1,7 @@
 package wikimultistreamindexparser_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -47,6 +48,22 @@ func TestNewParser(t *testing.T) {
 		)
 		if assert.NoError(t, err) {
 			assert.Equal(t, false, p.OptIsBz2)
+		}
+	})
+}
+
+func TestParser_Parse(t *testing.T) {
+	t.Run("ParseWithPlain", func(t *testing.T) {
+		p, err := wikimultistreamindexparser.NewParser(
+			strings.NewReader(testData),
+		)
+		if err != nil {
+			t.Error(t, err)
+			return
+		}
+		for s := range p.Parse(context.Background()) {
+			assert.Equal(t, false, s.IsErrored())
+			t.Logf("stream: %+v", s.Index)
 		}
 	})
 }
