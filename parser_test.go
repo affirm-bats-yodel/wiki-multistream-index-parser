@@ -1,7 +1,9 @@
 package wikimultistreamindexparser_test
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"strings"
 	"testing"
 
@@ -59,15 +61,67 @@ func TestParser_Parse(t *testing.T) {
 			strings.NewReader(testData),
 		)
 		if err != nil {
-			t.Error(t, err)
+			t.Error(err)
 			return
 		}
 		for s := range p.Parse(context.Background()) {
-			assert.Equal(t, false, s.IsErrored())
-			t.Logf("stream: %+v", s.Index)
+			if assert.Equal(t, false, s.IsErrored()) {
+				assert.NotEmpty(t, s.Index.Offset)
+				assert.NotEmpty(t, s.Index.PageID)
+				assert.NotEmpty(t, s.Index.Title)
+			} else {
+				t.Error(s)
+				return
+			}
 		}
 	})
-	t.Run("ParseWithBzip2Stream", func(t *testing.T) {})
+	t.Run("ParseWithBzip2Stream", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		// set WriterConfig for DefaultCompression
+		// Level
+		//
+		// See: https://github.com/dsnet/compress/blob/v0.0.1/bzip2/writer.go#L52
+		w, err := bzip2.NewWriter(&buf, nil)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer w.Close()
+
+		_, err = io.Copy(w, strings.NewReader(testData))
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		err = w.Close()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		// create parser with bzip2 enabled
+		p, err := wikimultistreamindexparser.NewParser(
+			bytes.NewReader(buf.Bytes()),
+			wikimultistreamindexparser.WithBz2(true),
+		)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		for s := range p.Parse(context.Background()) {
+			if assert.Equal(t, false, s.IsErrored()) {
+				assert.NotEmpty(t, s.Index.Offset)
+				assert.NotEmpty(t, s.Index.PageID)
+				assert.NotEmpty(t, s.Index.Title)
+			} else {
+				t.Error(s)
+				return
+			}
+		}
+	})
 }
 
 // TestIndex_String assert Index stringer return
