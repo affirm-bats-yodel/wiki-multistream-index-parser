@@ -50,3 +50,15 @@ func TestNewParser(t *testing.T) {
 		}
 	})
 }
+
+// TestIndex_String assert Index stringer return
+// a correct string
+func TestIndex_String(t *testing.T) {
+	expected := "1:2:Hello!\n"
+	i := &wikimultistreamindexparser.Index{
+		Offset: 1,
+		PageID: 2,
+		Title:  "Hello!",
+	}
+	assert.Equal(t, expected, i.String())
+}
