@@ -1,14 +1,24 @@
 package wikimultistreamindexparser
 
-import "io"
+import (
+	"errors"
+	"io"
+)
+
+var ErrEmptyReader = errors.New("error: empty r (io.Reader)")
 
 // NewParser Create new Parser
 //
 // - r: file reader
-func NewParser(r io.Reader) (*Parser, error) {
-	return &Parser{
-		Reader: r,
-	}, nil
+func NewParser(r io.Reader, opts ...func(*Parser)) (*Parser, error) {
+	p := &Parser{}
+	if r == nil {
+		return nil, ErrEmptyReader
+	}
+	for _, optFn := range opts {
+		optFn(p)
+	}
+	return p, nil
 }
 
 // Parser Wikipedia Index Dump Reader
