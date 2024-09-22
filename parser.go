@@ -1,6 +1,7 @@
 package wikimultistreamindexparser
 
 import (
+	"compress/bzip2"
 	"errors"
 	"io"
 )
@@ -17,6 +18,11 @@ func NewParser(r io.Reader, opts ...func(*Parser)) (*Parser, error) {
 	}
 	for _, optFn := range opts {
 		optFn(p)
+	}
+	if p.OptIsBz2 {
+		p.Reader = bzip2.NewReader(r)
+	} else {
+		p.Reader = r
 	}
 	return p, nil
 }
