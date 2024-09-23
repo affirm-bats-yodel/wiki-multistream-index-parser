@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -120,6 +121,52 @@ func TestParser_Parse(t *testing.T) {
 				t.Error(s)
 				return
 			}
+		}
+	})
+	t.Run("ParseWithTestData", func(t *testing.T) {
+		var articleIndexes []*wikimultistreamindexparser.Index
+		f, err := os.Open("./testdata/index.txt.bz2")
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer f.Close()
+
+		p, err := wikimultistreamindexparser.NewParser(
+			f,
+			wikimultistreamindexparser.WithBz2(true),
+		)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		for s := range p.Parse(context.Background()) {
+			if assert.Equal(t, false, s.IsErrored()) {
+				assert.NotEmpty(t, s.Index.Offset)
+				assert.NotEmpty(t, s.Index.PageID)
+				assert.NotEmpty(t, s.Index.Title)
+				articleIndexes = append(articleIndexes, &s.Index)
+			} else {
+				t.Error(s)
+				return
+			}
+		}
+
+		if err := f.Close(); err != nil {
+			t.Error(err)
+			return
+		}
+
+		// $ bzip2 -dc testdata/index.txt.bz2 | wc -l
+		assert.Len(t, articleIndexes, 200)
+
+		// offset: 540, 706858
+		offsets := p.GetOffsets()
+		t.Logf("offsets: %+v", offsets)
+		if assert.Len(t, offsets, 2) {
+			assert.Contains(t, offsets, uint64(540))
+			assert.Contains(t, offsets, uint64(706858))
 		}
 	})
 }
