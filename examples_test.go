@@ -68,4 +68,14 @@ func ExampleNewParser() {
 		}
 		_ = idxChan // use given data as you want...
 	}
+
+	// you can list offsets like this
+	//
+	// NOTE: please make sure that you've successfully read all
+	// entries.
+	//
+	// if not, you'll get unfinished list of the offsets
+
+	offsets := p.GetOffsets()
+	_ = offsets
 }
